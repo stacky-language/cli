@@ -10,6 +10,9 @@ use stacky::Errors;
 use stacky::Position;
 use stacky::{ErrorKind, Interpreter, Script, Value};
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::io::{Write, stdin, stdout};
+use std::rc::Rc;
 
 #[derive(Parser)]
 #[command(name = "stacky", bin_name = "stacky")]
@@ -75,10 +78,37 @@ fn main() {
     };
 }
 
+struct StdOutWrapper {
+    inner: std::io::Stdout,
+    ended_with_newline: Rc<RefCell<bool>>,
+}
+
+impl Write for StdOutWrapper {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let n = self.inner.write(buf)?;
+        if n > 0 {
+            self.ended_with_newline.replace(buf[n - 1] == b'\n');
+        }
+        Ok(n)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.inner.flush()
+    }
+}
+
 fn repl() -> Result<(), Error> {
     println!("Whelcome to Stacky {}!", env!("CARGO_PKG_VERSION"));
 
-    let mut interpreter = Interpreter::new().with_stdio();
+    let last_ended = Rc::new(RefCell::new(true));
+    let writer = StdOutWrapper {
+        inner: stdout(),
+        ended_with_newline: last_ended.clone(),
+    };
+
+    let mut interpreter = Interpreter::new()
+        .with_input(stdin().lock())
+        .with_output(writer);
     let mut rl = Editor::new().map_err(|e| Error {
         file_name: "main".to_string(),
         kind: ErrorKind::InvalidArgument(format!("Failed to create editor: {}", e)),
@@ -96,12 +126,15 @@ fn repl() -> Result<(), Error> {
                     continue;
                 }
 
-                // Add to history
                 rl.add_history_entry(input).ok();
 
                 match Script::from_str(input) {
                     Ok(script) => match interpreter.run(&script, &[]) {
                         Ok(_) => {
+                            if !*last_ended.borrow() {
+                                println!();
+                                last_ended.replace(true);
+                            }
                             print_stack(interpreter.stack());
                         }
                         Err(e) => match &e.kind {
@@ -145,13 +178,13 @@ impl Highlighter for StackyHighlighter {
         // known type names for syntax highlighting
         let type_names = ["string", "int", "float", "ptr", "bool", "nil"];
         let commands = [
-            "nop", "push", "pop", "add", "sub", "mul", "div", "mod", "neg", "dup", "print", "read",
-            "goto", "br", "label", "load", "store", "gt", "lt", "ge", "le", "eq", "ne", "and",
-            "or", "not", "xor", "shl", "shr", "convert", "rotl", "rotr", "clz", "ctz", "min",
-            "max", "abs", "sign", "ceil", "floor", "trunc", "sqrt", "len", "pow", "sin", "cos",
-            "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
-            "exp", "log", "getenv", "getarg", "malloc", "free", "memset", "memcpy", "memcmp",
-            "assert", "error", "exit",
+            "nop", "push", "pop", "add", "sub", "mul", "div", "mod", "neg", "dup", "print",
+            "println", "read", "goto", "br", "label", "load", "store", "gt", "lt", "ge", "le",
+            "eq", "ne", "and", "or", "not", "xor", "shl", "shr", "convert", "rotl", "rotr", "clz",
+            "ctz", "min", "max", "abs", "sign", "ceil", "floor", "trunc", "sqrt", "len", "pow",
+            "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "asinh", "acosh",
+            "atanh", "exp", "log", "getenv", "getarg", "malloc", "free", "memset", "memcpy",
+            "memcmp", "assert", "error", "exit",
         ];
 
         if let Some(pos) = line.find(';') {

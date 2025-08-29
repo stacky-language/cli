@@ -14,7 +14,7 @@ include = ["Cargo.toml", "LICENSE", "README.md", "/src/**"]
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 rustyline = "14.0"
-stacky = "0.1.1"
+stacky = { path = "../stacky" }
 
 [[bin]]
 name = "stacky"
