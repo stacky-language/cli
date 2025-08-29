@@ -418,16 +418,16 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
 name = "stacky"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bc00d9f34befa1b6dcbd0cb023fa2ff7347e1b7b3848e3fe2a028622ce1f0f7"
+checksum = "edf6cb1a9afd794811e3bba4107f0cd91c9b7143ae1dd7c85dff9b0052b79876"
 dependencies = [
  "chrono",
 ]
 
 [[package]]
 name = "stacky-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "rustyline",
